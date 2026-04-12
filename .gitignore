@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+data/churn.db
+data/*.csv
+data/*.pkl
+data/nn_model.keras
+data/rf_model.pkl
+.DS_Store
+*.egg-info/
+.env
