@@ -1,6 +1,6 @@
 """
 models/neural_network_model.py
-Feed Forward neuroninis tinklas su 25 hyperparametrų eksperimentais.
+Feed Forward neuroninis tinklas su 25 hyperparametrų eksperimentais
 """
 import os, json, numpy as np, joblib
 os.environ["KERAS_BACKEND"] = "torch"
@@ -17,7 +17,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "nn_model.ker
 # 25 hyperparametrų konfigūracijų lentelė
 # ---------------------------------------------------------------------------
 EXPERIMENTS = [
-    # exp_no, layers_str,    lr,      batch, optimizer, epochs, dropout, activation
+    # exp_no, layers_str, lr,  batch, optimizer,epochs,dropout,activation
     (1,  "64",            0.001,  32,  "adam",    30,  0.0,  "relu"),
     (2,  "128",           0.001,  32,  "adam",    30,  0.0,  "relu"),
     (3,  "128-64",        0.001,  32,  "adam",    30,  0.0,  "relu"),
@@ -48,7 +48,7 @@ EXPERIMENTS = [
 
 def _build_model(input_dim: int, layers_str: str, lr: float, optimizer_name: str,
                  dropout: float, activation: str) -> keras.Model:
-    """Sukuria Keras modelį pagal parametrus."""
+    """Sukuria  modelį pagal parametrus."""
     units = [int(u) for u in layers_str.split("-")]
 
     model = keras.Sequential()
@@ -76,7 +76,7 @@ def _build_model(input_dim: int, layers_str: str, lr: float, optimizer_name: str
 
 
 class NeuralNetworkModel:
-    """Feed Forward NN klientų išėjimo prognozavimui."""
+    """Feed Forward NN klientų išėjimo prognozavimui"""
 
     def __init__(self):
         self.model: keras.Model | None = None
@@ -87,8 +87,8 @@ class NeuralNetworkModel:
                    progress_callback=None) -> dict:
         """
         Apmoko GERIAUSIĄ konfigūraciją (exp 24):
-        256-128-64-32, adam, lr=0.0005, batch=64, dropout=0.3, epochs=60.
-        Naudojama galutiniam modeliui.
+        256-128-64-32, adam, lr=0.0005, batch=64, dropout=0.3, epochs=60
+        Naudojama galutiniam modeliui
         """
         input_dim = X_train.shape[1]
         self.model = _build_model(input_dim, "256-128-64-32",
@@ -110,9 +110,9 @@ class NeuralNetworkModel:
     def run_all_experiments(self, X_train, y_train, X_test, y_test,
                             progress_callback=None) -> list[dict]:
         """
-        Paleidžia visus 25 eksperimentus.
-        progress_callback(exp_no, total) → naudojamas Streamlit progress bar.
-        Grąžina sąrašą su rezultatais.
+        Paleidžia visus 25 eksperimentus
+        progress_callback(exp_no, total) → naudojamas Streamlit progress bar
+        Grąžina sąrašą su rezultatais
         """
         results = []
         input_dim = X_train.shape[1]

@@ -1,7 +1,7 @@
 """
 utils/data_loader.py
-CSV įkėlimas į DB ir visų transformacijų logika.
-SQLAlchemy 2.0 sintaksė: select() + session.execute() — be session.query().
+CSV įkėlimas į DB ir visų transformacijų logika
+
 """
 import pandas as pd
 from sqlalchemy import select, func
@@ -18,8 +18,8 @@ REQUIRED_COLUMNS = ["customerID", "tenure", "MonthlyCharges", "TotalCharges", "C
 
 def validate_columns(df: pd.DataFrame) -> tuple[bool, str]:
     """
-    Patikrina ar DataFrame turi visus privalomus stulpelius.
-    Grąžina (True, "") jei viskas gerai, arba (False, klaidos žinutė).
+    Patikrina ar DataFrame turi visus privalomus stulpelius
+    Grąžina (True, "") jei viskas ok, arba (False, klaidos žinutė)
     """
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
     if missing:
@@ -32,7 +32,7 @@ def validate_columns(df: pd.DataFrame) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 
 def _tenure_group(tenure: int) -> str:
-    """Priskiria kliento stažo grupę pagal mėnesių skaičių."""
+    """Priskiria kliento stažo grupę pagal mėnesių skaič"""
     if tenure <= 12:
         return "0-1 metai"
     elif tenure <= 24:
@@ -44,7 +44,7 @@ def _tenure_group(tenure: int) -> str:
 
 
 def _count_services(row: pd.Series) -> int:
-    """Suskaičiuoja kiek papildomų paslaugų klientas naudoja."""
+    """Suskaičiuoja kiek paslaugų klientas naudoja"""
     service_cols = [
         "PhoneService", "MultipleLines", "OnlineSecurity",
         "OnlineBackup", "DeviceProtection", "TechSupport",
@@ -61,8 +61,8 @@ def _count_services(row: pd.Series) -> int:
 
 def apply_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Prideda 8 išvestinius stulpelius prie DataFrame.
-    Visi originalūs stulpeliai paliekami nepakeisti.
+    Prideda 8 išvestinius stulpelius prie DataFrame
+    Visi originalūs stulpeliai paliekami nepakeisti
     """
     df = df.copy()
     df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce").fillna(0.0)
@@ -84,8 +84,7 @@ def apply_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
 
 def encode_churn(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Paverčia Churn stulpelį iš 'Yes'/'No' tekstų į 1/0 skaičius.
-    ML modeliai dirba tik su skaičiais.
+    Paverčia Churn stulpelį iš Yes/No tekstų į 1/0 skaičius ML mod
     """
     df = df.copy()
     df["Churn"] = df["Churn"].map({"Yes": 1, "No": 0, 1: 1, 0: 0}).fillna(0).astype(int)
@@ -93,13 +92,12 @@ def encode_churn(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 3. ORM 2.0 pagalbinės funkcijos
+# 3. Pagalbinės funkcijos
 # ---------------------------------------------------------------------------
 
 def customer_exists(session: Session, customer_id: str) -> bool:
     """
-    Patikrina ar klientas su nurodytu ID jau egzistuoja DB.
-    SQLAlchemy 2.0: select() + session.execute().
+    Patikrina ar klientas su nurodytu ID jau egzistuoja DB
     """
     stmt = select(func.count()).select_from(Customer).where(
         Customer.customer_id == customer_id
@@ -110,8 +108,8 @@ def customer_exists(session: Session, customer_id: str) -> bool:
 
 def build_customer_object(row: pd.Series) -> Customer:
     """
-    Iš vienos DataFrame eilutės sukuria Customer ORM objektą.
-    Grąžina Customer instanciją paruoštą session.add() operacijai.
+    Iš vienos DataFrame eilutės sukuria Customer ORM objektą
+    Grąžina Customer instanciją paruoštą session.add() operacijai
     """
     return Customer(
         customer_id             = str(row["customerID"]),
@@ -147,13 +145,13 @@ def build_customer_object(row: pd.Series) -> Customer:
 
 
 # ---------------------------------------------------------------------------
-# 4. CSV → SQLite
+# 4. CSV  į SQLite
 # ---------------------------------------------------------------------------
 
 def load_csv_to_db(filepath: str) -> tuple[bool, str]:
     """
-    Įkelia CSV failą į SQLite duomenų bazę.
-    Grąžina (sėkmė: bool, žinutė: str).
+    Įkelia CSV failą į SQLite duomenų bazę
+    Grąžina (sėkmė: bool, žinutė: str)
     """
     try:
         init_db()
@@ -189,8 +187,7 @@ def load_csv_to_db(filepath: str) -> tuple[bool, str]:
 
 def load_data_from_db() -> pd.DataFrame:
     """
-    Grąžina visus klientus iš DB kaip DataFrame.
-    SQLAlchemy 2.0: select() + session.execute().
+    Grąžina visus klientus iš DB kaip DataFrame
     """
     session = get_session()
     stmt = select(Customer)
@@ -198,7 +195,7 @@ def load_data_from_db() -> pd.DataFrame:
     session.close()
 
     if not customers:
-        raise ValueError("Duomenų bazė tuščia. Pirmiausia įkelkite CSV.")
+        raise ValueError("Duomenų bazė tuščia. Pradžioje įkelti CSV")
 
     records = [{
         "tenure":                  c.tenure,
