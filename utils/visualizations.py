@@ -1,7 +1,6 @@
 """
 utils/visualizations.py
-Visi grafikai — 7 prasmingos vizualizacijos.
-SQLAlchemy 2.0: select() + session.execute() — be session.query().
+Visi grafikai — 7 prasmingos vizualizacijos
 """
 import pandas as pd
 import numpy as np
@@ -14,7 +13,7 @@ from database.models import Customer, HyperparamExperiment
 
 
 def _fetch_all_customers() -> list:
-    """Grąžina visus klientus iš DB. SQLAlchemy 2.0 sintaksė."""
+    """Grąžina visus klientus iš DB"""
     session = get_session()
     stmt = select(Customer)
     customers = session.execute(stmt).scalars().all()
@@ -23,7 +22,7 @@ def _fetch_all_customers() -> list:
 
 
 def plot_churn_distribution() -> go.Figure:
-    """Stulpelinė diagrama: klientų išėjimo pasiskirstymas."""
+    """Stulpelinė diagrama: klientų išėjimo pasiskirstymas"""
     customers = _fetch_all_customers()
     churn_counts = {"Liko (0)": 0, "Išėjo (1)": 0}
     for c in customers:
@@ -51,7 +50,7 @@ def plot_churn_distribution() -> go.Figure:
 
 
 def plot_charges_by_contract() -> go.Figure:
-    """Box plot: mėnesinės išlaidos pagal churn ir sutarties tipą."""
+    """Box plot: mėnesinės išlaidos pagal churn ir sutart. tipą"""
     customers = _fetch_all_customers()
     df = pd.DataFrame({
         "contract":        [c.contract for c in customers],
@@ -69,7 +68,7 @@ def plot_charges_by_contract() -> go.Figure:
 
 
 def plot_tenure_churn() -> go.Figure:
-    """Histograma: stažo pasiskirstymas pagal churn grupę."""
+    """Histograma: stažo pasiskirstymas pagal churn gr."""
     customers = _fetch_all_customers()
     stayed  = [c.tenure for c in customers if c.churn == 0]
     churned = [c.tenure for c in customers if c.churn == 1]
@@ -91,7 +90,7 @@ def plot_tenure_churn() -> go.Figure:
 
 
 def plot_services_vs_churn() -> go.Figure:
-    """Dviguba ašis: paslaugų skaičiaus įtaka churn."""
+    """Dviguba ašis: paslaugų skaičiaus įtaka churn"""
     customers = _fetch_all_customers()
     df = pd.DataFrame({
         "service_count": [c.service_count for c in customers],
@@ -119,7 +118,7 @@ def plot_services_vs_churn() -> go.Figure:
 
 
 def plot_confusion_matrix(cm: list, model_name: str) -> go.Figure:
-    """Heatmap: confusion matrix."""
+    """Heatmap: confusion matrix"""
     cm_arr = np.array(cm)
     labels = ["Liko (0)", "Išėjo (1)"]
     fig = go.Figure(go.Heatmap(
@@ -136,7 +135,6 @@ def plot_confusion_matrix(cm: list, model_name: str) -> go.Figure:
     )
     return fig
 
-
 def plot_experiment_results() -> go.Figure:
     """Interaktyvi lentelė: visi 25 neuroninio tinklo eksperimentai."""
     session = get_session()
@@ -148,14 +146,14 @@ def plot_experiment_results() -> go.Figure:
         return go.Figure().update_layout(title="Eksperimentų duomenų nėra")
 
     rows = [{
-        "Exp#":      e.experiment_no,
-        "Sluoksniai": e.layers,
+        "Exp#":       e.experiment_no,
+        "Layers": e.layers,
         "LR":         e.learning_rate,
         "Batch":      e.batch_size,
         "Optimizer":  e.optimizer,
         "Epochs":     e.epochs,
         "Dropout":    e.dropout,
-        "Aktiv.":     e.activation,
+        "Activ.":     e.activation,
         "Accuracy":   f"{(e.val_accuracy or 0):.4f}",
         "F1":         f"{(e.val_f1 or 0):.4f}",
         "ROC-AUC":    f"{(e.val_roc_auc or 0):.4f}",
@@ -163,17 +161,25 @@ def plot_experiment_results() -> go.Figure:
 
     df = pd.DataFrame(rows)
     fig = go.Figure(go.Table(
-        header=dict(values=list(df.columns),
-                    fill_color="#1565C0",
-                    font=dict(color="white", size=11),
-                    align="center"),
-        cells=dict(values=[df[c] for c in df.columns],
-                   fill_color=[["#E3F2FD" if i % 2 == 0 else "white"
-                                for i in range(len(df))]],
-                   align="center", font_size=11)
+        header=dict(
+            values=list(df.columns),
+            fill_color="#2D2D2D",
+            font=dict(color="white", size=11),
+            align="center"
+        ),
+        
+        cells=dict(
+            values=[df[c] for c in df.columns],
+            fill_color=[["#1E1E1E" if i % 2 == 0 else "#2D2D2D"
+                         for i in range(len(df))]],
+            font=dict(color="white", size=11),
+            align="center"
+        )
     ))
-    fig.update_layout(title="Visų 25 neuroninio tinklo eksperimentų rezultatai",
-                      paper_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(
+        title="Visų 25 neuroninio tinklo eksperimentų rezultatai",
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
     return fig
 
 
