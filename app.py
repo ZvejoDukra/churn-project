@@ -238,7 +238,8 @@ elif page == "🤖 Modelių treniravimas":
             if metrics.get("roc_auc"):
                 st.metric("ROC-AUC", f"{metrics['roc_auc']:.4f}")
             st.metric("MCC", f"{metrics.get('mcc', 0):.4f}")
-
+            if metrics.get("oob_score"):                                # įterpiama papildoma eilutė
+                st.metric("OOB Score", f"{metrics['oob_score']:.4f}")   # įtrepiama papildoma eilutė
             st.plotly_chart(plot_confusion_matrix(
                 metrics["confusion_matrix"], "Random Forest"),
                 use_container_width=True)
@@ -316,6 +317,12 @@ elif page == "🔮 Prognozavimas":
               else ["Neuroninis tinklas"])
     )
 
+    threshold = st.slider("Sprendimo slenkstis", 
+                          min_value=0.3, 
+                          max_value=0.9, 
+                          value=0.5, 
+                          step=0.05,
+                          help="0.5 = default. Didesnė reikšmė = aukštesni reikalavimai kad klientas būtų laikomas 'išeinančiu'")
     st.markdown("### Kliento duomenys")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -360,7 +367,7 @@ elif page == "🔮 Prognozavimas":
         if model_choice == "Random Forest":
             rf = RandomForestModel()
             rf.load()
-            cls, prob = rf.predict(X)
+            cls, prob = rf.predict(X, threshold=threshold)
         else:
             nn = NeuralNetworkModel()
             nn.load()

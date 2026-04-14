@@ -1,7 +1,4 @@
-"""
-models/random_forest_model.py
-Random Forest modelis - pagrindinis ML modelis.
-"""
+
 import joblib, os, numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
@@ -11,7 +8,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "rf_model.pkl
 
 
 class RandomForestModel:
-    """Random Forest klasifikatorius klientų išėjimo prognozavimui."""
+    """Random Forest klasifik klientų išėjimo prognozavimui"""
 
     def __init__(self, n_estimators: int = 200, max_depth: int = 10,
                  min_samples_split: int = 5, random_state: int = 42):
@@ -22,27 +19,29 @@ class RandomForestModel:
             class_weight      = "balanced",
             random_state      = random_state,
             n_jobs            = -1,
+            oob_score         = True,
         )
         self.metrics: dict = {}
         self.feature_importances_: np.ndarray | None = None
 
     def train(self, X_train, y_train) -> None:
-        """Apmoko modelį."""
+        """Apmokomas modelį"""
         self.model.fit(X_train, y_train)
         self.feature_importances_ = self.model.feature_importances_
 
     def evaluate(self, X_test, y_test) -> dict:
-        """Įvertina modelį ir išsaugo metrikas."""
-        y_pred = self.model.predict(X_test)
+        """Įvertinas modelis ir išsaugomos metrikos"""
         y_prob = self.model.predict_proba(X_test)[:, 1]
+        y_pred = (y_prob >= 0.6 ).astype(int)   # ČIA įvestas SLENKSTIS (kita ne defaulkt reikšmė)
         self.metrics = compute_metrics(y_test, y_pred, y_prob)
+        self.metrics["oob_score"] = round(self.model.oob_score_, 4)
         save_model_result("RandomForest", self.metrics,
                           notes={"n_estimators": self.model.n_estimators,
                                  "max_depth": self.model.max_depth})
         return self.metrics
 
     def predict(self, X) -> tuple[int, float]:
-        """Grąžina (klasė, tikimybė)."""
+        """Grąžinama (klasė, tikimybė)"""
         cls  = int(self.model.predict(X)[0])
         prob = float(self.model.predict_proba(X)[0, 1])
         return cls, prob

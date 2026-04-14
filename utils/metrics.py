@@ -1,7 +1,5 @@
 """
-utils/metrics.py
-Visų metrikų skaičiavimas ir išsaugojimas DB.
-SQLAlchemy 2.0: session.add() + session.commit() — be session.query().
+Visų metrikų skaičiavimas ir išsaugojimas DB
 """
 import json, uuid
 from sklearn.metrics import (
@@ -30,8 +28,8 @@ def compute_metrics(y_true, y_pred, y_prob=None) -> dict:
 
 def save_model_result(model_name: str, metrics: dict, notes: dict = None) -> None:
     """
-    Išsaugo modelio rezultatus DB.
-    SQLAlchemy 2.0: session.add() + session.commit().
+    Išsaugo modelio rezultatus DB
+
     """
     session = get_session()
     result = ModelResult(
@@ -52,7 +50,7 @@ def save_model_result(model_name: str, metrics: dict, notes: dict = None) -> Non
 def save_hyperparam_experiment(exp_no: int, params: dict, metrics: dict) -> None:
     """
     Išsaugo vieną neuroninio tinklo eksperimentą DB.
-    SQLAlchemy 2.0: session.add() + session.commit().
+
     """
     session = get_session()
     exp = HyperparamExperiment(
