@@ -82,17 +82,20 @@ def fetch_all_model_results() -> list:
 
 def save_prediction(model_name: str, input_data: dict,
                     probability: float, prediction: int) -> None:
-    """Išsaugo prognozę DB. SQLAlchemy 2.0."""
-    session = get_session()
-    pred = Prediction(
-        model_used        = model_name,
-        input_data        = json.dumps(input_data),
-        churn_probability = probability,
-        prediction        = prediction,
-    )
-    session.add(pred)
-    session.commit()
-    session.close()
+    
+    try:
+        session = get_session()
+        pred = Prediction(
+            model_used        = model_name,
+            input_data        = json.dumps(input_data),
+            churn_probability = probability,
+            prediction        = prediction,
+        )
+        session.add(pred)
+        session.commit()
+        session.close()
+    except Exception as e:
+        print(f"Klaida išsaugant prognozę: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -302,86 +305,156 @@ elif page == "🤖 Modelių treniravimas":
 # ===========================================================================
 # 4. PROGNOZAVIMAS
 # ===========================================================================
+
 elif page == "🔮 Prognozavimas":
     st.title("🔮 Kliento išėjimo prognozavimas")
+    tab_single, tab_batch = st.tabs(["👤 Vienas klientas", "📋 Batch (CSV)"])
 
-    if not (RandomForestModel.is_trained() or NeuralNetworkModel.is_trained()):
-        st.error("❌ Pirmiausia aptrenkite modelius.")
-        st.stop()
+    with tab_batch:
+        st.markdown("### CSV failo įkėlimas")
+        batch_file = st.file_uploader("Įkelkite CSV su klientais", type=["csv"], key="batch")
+        if batch_file:
+            df_batch = pd.read_csv(batch_file)
+            st.dataframe(df_batch.head(), use_container_width=True)
+            model_batch = st.selectbox("Modelis", ["Random Forest", "Neuroninis tinklas"], key="batch_model")
+            if st.button("🔮 Prognozuoti visus", type="primary"):
+                from utils.preprocessing import scale_single, FEATURE_COLS
+                results = []
+                for _, row in df_batch.iterrows():
+                    try:
+                        input_dict = {
+                            "tenure":                  float(row.get("tenure", 0)),
+                            "monthly_charges":         float(row.get("MonthlyCharges", 0)),
+                            "total_charges":           float(row.get("TotalCharges", 0)),
+                            "senior_citizen":          int(row.get("SeniorCitizen", 0)),
+                            "service_count":           int(row.get("service_count", 3)),
+                            "has_streaming":           int(row.get("has_streaming", 0)),
+                            "has_security_services":   int(row.get("has_security_services", 0)),
+                            "is_long_term_contract":   int(row.get("is_long_term_contract", 0)),
+                            "charges_per_month_ratio": float(row.get("charges_per_month_ratio", 0)),
+                            "avg_monthly_over_tenure": float(row.get("avg_monthly_over_tenure", 0)),
+                            "high_value_customer":     int(row.get("high_value_customer", 0)),
+                        }
+                        X = scale_single(input_dict)
+                        if model_batch == "Random Forest":
+                            rf = RandomForestModel(); rf.load()
+                            cls, prob = rf.predict(X)
+                        else:
+                            nn = NeuralNetworkModel(); nn.load()
+                            cls, prob = nn.predict(X)
+                        results.append({
+                            "customerID": row.get("customerID", "?"),
+                            "Prognozė":   "⚠️ Išeis" if cls == 1 else "✅ Liks",
+                            "Tikimybė":   f"{prob:.1%}",
+                        })
+                        save_prediction(model_batch, input_dict, prob, cls)
+                    except Exception as e:
+                        results.append({
+                            "customerID": row.get("customerID", "?"),
+                            "Prognozė": "Klaida",
+                            "Tikimybė": str(e)
+                        })
+                st.dataframe(pd.DataFrame(results), use_container_width=True)
 
-    model_choice = st.selectbox(
-        "Modelio pasirinkimas",
-        ["Random Forest", "Neuroninis tinklas"] if (
-            RandomForestModel.is_trained() and NeuralNetworkModel.is_trained())
-        else (["Random Forest"] if RandomForestModel.is_trained()
-              else ["Neuroninis tinklas"])
-    )
+    with tab_single:
+        if not (RandomForestModel.is_trained() or NeuralNetworkModel.is_trained()):
+            st.error("❌ Pirmiausia aptreniruokite modelius.")
+            st.stop()
 
-    threshold = st.slider("Sprendimo slenkstis", 
-                          min_value=0.3, 
-                          max_value=0.9, 
-                          value=0.5, 
-                          step=0.05,
-                          help="0.5 = default. Didesnė reikšmė = aukštesni reikalavimai kad klientas būtų laikomas 'išeinančiu'")
-    st.markdown("### Kliento duomenys")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        tenure          = st.slider("Stažas (mėnesiai)", 0, 72, 12)
-        monthly_charges = st.number_input("Mėnesinės išlaidos (€)", 0.0, 200.0, 65.0)
-        total_charges   = st.number_input("Iš viso sumokėta (€)", 0.0, 10000.0,
-                                           float(monthly_charges * tenure))
-        senior_citizen  = st.selectbox("Vyresnio amžiaus?", [0, 1],
-                                        format_func=lambda x: "Taip" if x else "Ne")
-    with col2:
-        service_count         = st.slider("Paslaugų skaičius", 0, 8, 3)
-        has_streaming         = st.selectbox("Turi srautinį turinį?", [0, 1],
-                                              format_func=lambda x: "Taip" if x else "Ne")
-        has_security_services = st.selectbox("Turi saugumo paslaugas?", [0, 1],
-                                              format_func=lambda x: "Taip" if x else "Ne")
-    with col3:
-        is_long_term_contract   = st.selectbox("Ilgalaikė sutartis?", [0, 1],
-                                                format_func=lambda x: "Taip" if x else "Ne")
-        high_value_customer     = int(monthly_charges > 70)
-        charges_per_month_ratio = round(total_charges / (tenure + 1), 4)
-        avg_monthly_over_tenure = round(monthly_charges / (tenure + 1), 4)
-        st.metric("Vid. mėn. išlaidos / stažas", f"{avg_monthly_over_tenure:.2f}")
-        st.metric("High-value klientas", "Taip" if high_value_customer else "Ne")
+        model_choice = st.selectbox(
+            "Modelio pasirinkimas",
+            ["Random Forest", "Neuroninis tinklas"] if (
+                RandomForestModel.is_trained() and NeuralNetworkModel.is_trained())
+            else (["Random Forest"] if RandomForestModel.is_trained()
+                  else ["Neuroninis tinklas"])
+        )
 
-    if st.button("🔮 Gauti prognozę", type="primary"):
-        input_dict = {
-            "tenure":                  tenure,
-            "monthly_charges":         monthly_charges,
-            "total_charges":           total_charges,
-            "senior_citizen":          senior_citizen,
-            "service_count":           service_count,
-            "has_streaming":           has_streaming,
-            "has_security_services":   has_security_services,
-            "is_long_term_contract":   is_long_term_contract,
-            "charges_per_month_ratio": charges_per_month_ratio,
-            "avg_monthly_over_tenure": avg_monthly_over_tenure,
-            "high_value_customer":     high_value_customer,
-        }
+        threshold = st.slider(
+            "Sprendimo slenkstis",
+            min_value=0.3,
+            max_value=0.9,
+            value=0.5,
+            step=0.05,
+            help="0.5 = default. Didesnė reikšmė = aukštesni reikalavimai kad klientas būtų laikomas 'išeinančiu'"
+        )
 
-        X = scale_single(input_dict)
+        st.markdown("### Kliento duomenys")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            tenure = st.slider("Stažas (mėnesiai)", 0, 72, 12)
+            monthly_charges = st.number_input("Mėnesinės išlaidos (€)", 0.0, 200.0, 65.0)
+            total_charges = st.number_input(
+                "Iš viso sumokėta (€)",
+                0.0,
+                10000.0,
+                float(monthly_charges * tenure)
+            )
+            senior_citizen = st.selectbox(
+                "Vyresnio amžiaus?", [0, 1],
+                format_func=lambda x: "Taip" if x else "Ne"
+            )
 
-        if model_choice == "Random Forest":
-            rf = RandomForestModel()
-            rf.load()
-            cls, prob = rf.predict(X, threshold=threshold)
-        else:
-            nn = NeuralNetworkModel()
-            nn.load()
-            cls, prob = nn.predict(X)
+        with col2:
+            service_count = st.slider("Paslaugų skaičius", 0, 8, 3)
+            has_streaming = st.selectbox(
+                "Turi srautinį turinį?", [0, 1],
+                format_func=lambda x: "Taip" if x else "Ne"
+            )
+            has_security_services = st.selectbox(
+                "Turi saugumo paslaugas?", [0, 1],
+                format_func=lambda x: "Taip" if x else "Ne"
+            )
 
-        save_prediction(model_choice, input_dict, prob, cls)
+        with col3:
+            is_long_term_contract = st.selectbox(
+                "Ilgalaikė sutartis?", [0, 1],
+                format_func=lambda x: "Taip" if x else "Ne"
+            )
+            high_value_customer = int(monthly_charges > 70)
+            charges_per_month_ratio = round(total_charges / (tenure + 1), 4)
+            avg_monthly_over_tenure = round(monthly_charges / (tenure + 1), 4)
+            st.metric("Vid. mėn. išlaidos / stažas", f"{avg_monthly_over_tenure:.2f}")
+            st.metric("High-value klientas", "Taip" if high_value_customer else "Ne")
 
-        st.markdown("---")
-        if cls == 1:
-            st.error(f"⚠️ **KLIENTAS GREIČIAUSIAI IŠEIS** — tikimybė: **{prob:.1%}**")
-        else:
-            st.success(f"✅ **KLIENTAS GREIČIAUSIAI LIKS** — išėjimo tikimybė: **{prob:.1%}**")
-        st.progress(prob)
-        st.caption(f"Išėjimo tikimybė: {prob:.4f}")
+        if st.button("🔮 Gauti prognozę", type="primary"):
+            from utils.preprocessing import scale_single
+
+            input_dict = {
+                "tenure":                  tenure,
+                "monthly_charges":         monthly_charges,
+                "total_charges":           total_charges,
+                "senior_citizen":          senior_citizen,
+                "service_count":           service_count,
+                "has_streaming":           has_streaming,
+                "has_security_services":   has_security_services,
+                "is_long_term_contract":   is_long_term_contract,
+                "charges_per_month_ratio": charges_per_month_ratio,
+                "avg_monthly_over_tenure": avg_monthly_over_tenure,
+                "high_value_customer":     high_value_customer,
+            }
+
+            X = scale_single(input_dict)
+
+            if model_choice == "Random Forest":
+                rf = RandomForestModel()
+                rf.load()
+                cls, prob = rf.predict(X, threshold=threshold)
+            else:
+                nn = NeuralNetworkModel()
+                nn.load()
+                cls, prob = nn.predict(X)
+
+            save_prediction(model_choice, input_dict, prob, cls)
+
+            st.markdown("---")
+            if cls == 1:
+                st.error(f"⚠️ **KLIENTAS GREIČIAUSIAI IŠEIS** — tikimybė: **{prob:.1%}**")
+            else:
+                st.success(f"✅ **KLIENTAS GREIČIAUSIAI LIKS** — išėjimo tikimybė: **{prob:.1%}**")
+            st.progress(prob)
+            st.caption(f"Išėjimo tikimybė: {prob:.4f}")
+
+
 
 
 # ===========================================================================
@@ -491,9 +564,9 @@ elif page == "📋 Išvados":
 
     #### Hyperparametrų eksperimentų išvados (25 bandymai)
     - **Sluoksnių skaičius:** 256-128-64-32 dažniausiai geriausias
-    - **Learning rate:** 0.0001–0.001 optimalus; 0.01 nestabilus
-    - **Batch size:** 32–64 geriausias balanso taškas
-    - **Dropout:** 0.2–0.3 sumažino overfittingą
+    - **Learning rate:** 0.0001 - 0.001 optimalus; 0.01 nestabilus
+    - **Batch size:** 32 - 64 geriausias balanso taškas
+    - **Dropout:** 0.2 - 0.3 sumažino overfittingą
     - **Optimizer:** Adam ir Nadam aplenkė RMSprop ir SGD
     - **Geriausias eksperimentas:** #24 (256-128-64-32, lr=0.0005, batch=64, dropout=0.3)
     """)

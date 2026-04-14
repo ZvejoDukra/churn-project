@@ -129,7 +129,7 @@ class NeuralNetworkModel:
                          epochs=epochs, batch_size=batch,
                          callbacks=cb, verbose=0)
 
-            y_pred = (m.predict(X_test, verbose=0) > 0.5).astype(int).flatten()
+            y_pred = (m.predict(X_test, verbose=0) > 0.).astype(int).flatten()   # pakeistas slenkstis į 0.6
             y_prob = m.predict(X_test, verbose=0).flatten()
             metrics = compute_metrics(y_test, y_pred, y_prob)
             metrics["val_loss"] = float(hist.history["val_loss"][-1])
@@ -156,7 +156,7 @@ class NeuralNetworkModel:
 
     def predict(self, X) -> tuple[int, float]:
         prob = float(self.model.predict(X, verbose=0)[0, 0])
-        return int(prob > 0.5), prob
+        return int(prob > 0.6), prob                         # pakeistas slenkstis į 0.6
 
     def save(self) -> None:
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
