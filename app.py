@@ -546,27 +546,4 @@ elif page == "📋 Išvados":
                       paper_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("### 📝 Tekstinės išvados")
-    winner = "Random Forest" if (rf_results.f1 or 0) >= (nn_results.f1 or 0) \
-             else "Neuroninis tinklas"
-    st.markdown(f"""
-    **Geriau pasirodė: {winner}**
-
-    #### Random Forest
-    - Stabilus ir interpretuojamas modelis
-    - Feature importance leidžia suprasti, kokie požymiai lemia sprendimą
-    - Geras rezultatas su santykinai mažai duomenų
-
-    #### Neuroninis tinklas (Feed Forward)
-    - Gali išmokti sudėtingų nelinijinių ryšių
-    - Reikalauja daugiau duomenų ir laiko treniravimui
-    - Jautresnis hyperparametrų pasirinkimui
-
-    #### Hyperparametrų eksperimentų išvados (25 bandymai)
-    - **Sluoksnių skaičius:** 256-128-64-32 dažniausiai geriausias
-    - **Learning rate:** 0.0001 - 0.001 optimalus; 0.01 nestabilus
-    - **Batch size:** 32 - 64 geriausias balanso taškas
-    - **Dropout:** 0.2 - 0.3 sumažino overfittingą
-    - **Optimizer:** Adam ir Nadam aplenkė RMSprop ir SGD
-    - **Geriausias eksperimentas:** #24 (256-128-64-32, lr=0.0005, batch=64, dropout=0.3)
-    """)
+    
