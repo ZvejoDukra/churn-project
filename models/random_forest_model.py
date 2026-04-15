@@ -40,7 +40,10 @@ class RandomForestModel:
                                  "max_depth": self.model.max_depth})
         return self.metrics
 
-    def predict(self, X) -> tuple[int, float]:
+    def predict(self, X, threshold: float = 0.6) -> tuple[int, float]:
+        prob = float(self.model.predict_proba(X)[0, 1])
+        cls  = int(prob >= threshold)
+        return cls, prob
         """Grąžinama (klasė, tikimybė)"""
         cls  = int(self.model.predict(X)[0])
         prob = float(self.model.predict_proba(X)[0, 1])
