@@ -1,7 +1,6 @@
 """
 app.py
-Pagrindinis Streamlit frontentas — daugelio puslapių programa.
-SQLAlchemy 2.0: select() + session.execute() — be session.query().
+Pagrindinis Streamlit frontendas — daugelio puslapių programa
 Paleidimas: streamlit run app.py
 """
 import streamlit as st
@@ -36,11 +35,11 @@ init_db()
 
 
 # ---------------------------------------------------------------------------
-# DB skaičiavimo pagalbinės funkcijos (SQLAlchemy 2.0)
+# DB skaičiavimo pagalbinės funkcijos
 # ---------------------------------------------------------------------------
 
 def count_table(model_class) -> int:
-    """Grąžina eilučių skaičių iš nurodytos lentelės. SQLAlchemy 2.0."""
+    """Grąžina eilučių skaičių iš nurodytos lentelės"""
     session = get_session()
     stmt = select(func.count()).select_from(model_class)
     count = session.execute(stmt).scalar()
@@ -49,7 +48,7 @@ def count_table(model_class) -> int:
 
 
 def fetch_customers_preview(limit: int = 10) -> list:
-    """Grąžina pirmus N klientų iš DB. SQLAlchemy 2.0."""
+    """Grąžina pirmus N klientų iš DB"""
     session = get_session()
     stmt = select(Customer).limit(limit)
     customers = session.execute(stmt).scalars().all()
@@ -58,7 +57,7 @@ def fetch_customers_preview(limit: int = 10) -> list:
 
 
 def fetch_latest_model_result(model_name: str) -> ModelResult | None:
-    """Grąžina naujausią modelio rezultatą pagal pavadinimą. SQLAlchemy 2.0."""
+    """Grąžina naujausią modelio rezultatą pagal pavadinimą"""
     session = get_session()
     stmt = (
         select(ModelResult)
@@ -72,7 +71,7 @@ def fetch_latest_model_result(model_name: str) -> ModelResult | None:
 
 
 def fetch_all_model_results() -> list:
-    """Grąžina visus modelių rezultatus. SQLAlchemy 2.0."""
+    """Grąžina visus modelių rezultatus"""
     session = get_session()
     stmt = select(ModelResult)
     results = session.execute(stmt).scalars().all()
@@ -135,7 +134,7 @@ if page == "🏠 Pradžia":
     Ši sistema leidžia jums:
     - 📥 **Įkelti** telekomunikacijų klientų CSV duomenis į SQLite duomenų bazę
     - 🤖 **Apmokyti** Random Forest ir Feed Forward neuroninį tinklą
-    - 🔮 **Gauti prognozes** individualiems klientams
+    - 🔮 **Gauti prognozes** individualiems klientams ar klientui grupei
     - 📈 **Peržiūrėti grafikus** ir analizę
     - 🧪 **Palyginti** 25 neuroninio tinklo konfigūracijų rezultatus
     """)
@@ -317,6 +316,7 @@ elif page == "🔮 Prognozavimas":
             df_batch = pd.read_csv(batch_file)
             st.dataframe(df_batch.head(), use_container_width=True)
             model_batch = st.selectbox("Modelis", ["Random Forest", "Neuroninis tinklas"], key="batch_model")
+            threshold_batch = st.slider("Sprendimo slenkstis", min_value=0.3, max_value=0.9, value=0.6, step=0.05, key="batch_threshold")
             if st.button("🔮 Prognozuoti visus", type="primary"):
                 from utils.preprocessing import scale_single, FEATURE_COLS
                 results = []
@@ -338,7 +338,7 @@ elif page == "🔮 Prognozavimas":
                         X = scale_single(input_dict)
                         if model_batch == "Random Forest":
                             rf = RandomForestModel(); rf.load()
-                            cls, prob = rf.predict(X)
+                            cls, prob = rf.predict(X, threshold=threshold_batch)
                         else:
                             nn = NeuralNetworkModel(); nn.load()
                             cls, prob = nn.predict(X)
@@ -373,7 +373,7 @@ elif page == "🔮 Prognozavimas":
             "Sprendimo slenkstis",
             min_value=0.3,
             max_value=0.9,
-            value=0.5,
+            value=0.6,              # slankiklio pradinė reikšmė tokia pat kokia modeliams naudota slenksčio reikšmė
             step=0.05,
             help="0.5 = default. Didesnė reikšmė = aukštesni reikalavimai kad klientas būtų laikomas 'išeinančiu'"
         )
